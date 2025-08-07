@@ -53,15 +53,15 @@ def main():
         print(Fore.WHITE + Back.LIGHTYELLOW_EX + f"Valid username amount: {available} (HEAVENLY!!!)" + Style.RESET_ALL)
     elif available >= 1000:
         print(Fore.CYAN + f"Valid username amount: {available} (MYTHICAL!!)" + Style.RESET_ALL)
-    elif available >= 500:
+    elif available >= 325:
         print(Fore.YELLOW + f"Valid username amount: {available} (Legendary!)" + Style.RESET_ALL)
-    elif available >= 250:
+    elif available >= 125:
         print(Fore.MAGENTA + f"Valid username amount: {available} (Epic!)" + Style.RESET_ALL)
-    elif available >= 100:
-        print(Fore.BLUE + f"Valid username amount: {available} (Rare!)" + Style.RESET_ALL)
     elif available >= 25:
-        print(Fore.GREEN + f"Valid username amount: {available} (Uncommon)" + Style.RESET_ALL)
+        print(Fore.BLUE + f"Valid username amount: {available} (Rare!)" + Style.RESET_ALL)
     elif available >= 5:
+        print(Fore.GREEN + f"Valid username amount: {available} (Uncommon)" + Style.RESET_ALL)
+    elif available >= 1:
         print(Fore.LIGHTBLACK_EX + f"Valid username amount: {available} (Common)" + Style.RESET_ALL)
     else:
         print("No usernames available..")

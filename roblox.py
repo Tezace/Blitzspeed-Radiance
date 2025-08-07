@@ -8,15 +8,16 @@ available = 0
 init()
 
 def print_banner():
-    print(Fore.YELLOW + "██╗░░██╗███████╗░█████╗░██╗░░░██╗███████╗███╗░░██╗██╗░░░░░██╗░░░██╗  ███╗░░██╗░█████╗░███╗░░░███╗███████╗  ░██████╗███╗░░██╗██╗██████╗░███████╗██████╗░" + Style.RESET_ALL)
+    print(Fore.WHITE + "██╗░░██╗███████╗░█████╗░██╗░░░██╗███████╗███╗░░██╗██╗░░░░░██╗░░░██╗  ███╗░░██╗░█████╗░███╗░░░███╗███████╗  ░██████╗███╗░░██╗██╗██████╗░███████╗██████╗░" + Style.RESET_ALL)
     print(Fore.WHITE + "██║░░██║██╔════╝██╔══██╗██║░░░██║██╔════╝████╗░██║██║░░░░░╚██╗░██╔╝  ████╗░██║██╔══██╗████╗░████║██╔════╝  ██╔════╝████╗░██║██║██╔══██╗██╔════╝██╔══██╗" + Style.RESET_ALL)
-    print(Fore.YELLOW + "███████║█████╗░░███████║╚██╗░██╔╝█████╗░░██╔██╗██║██║░░░░░░╚████╔╝░  ██╔██╗██║███████║██╔████╔██║█████╗░░  ╚█████╗░██╔██╗██║██║██████╔╝█████╗░░██████╔╝" + Style.RESET_ALL)
+    print(Fore.WHITE + "███████║█████╗░░███████║╚██╗░██╔╝█████╗░░██╔██╗██║██║░░░░░░╚████╔╝░  ██╔██╗██║███████║██╔████╔██║█████╗░░  ╚█████╗░██╔██╗██║██║██████╔╝█████╗░░██████╔╝" + Style.RESET_ALL)
     print(Fore.WHITE + "██╔══██║██╔══╝░░██╔══██║░╚████╔╝░██╔══╝░░██║╚████║██║░░░░░░░╚██╔╝░░  ██║╚████║██╔══██║██║╚██╔╝██║██╔══╝░░  ░╚═══██╗██║╚████║██║██╔═══╝░██╔══╝░░██╔══██╗" + Style.RESET_ALL)
-    print(Fore.YELLOW + "██║░░██║███████╗██║░░██║░░╚██╔╝░░███████╗██║░╚███║███████╗░░░██║░░░  ██║░╚███║██║░░██║██║░╚═╝░██║███████╗  ██████╔╝██║░╚███║██║██║░░░░░███████╗██║░░██║" + Style.RESET_ALL)
+    print(Fore.WHITE + "██║░░██║███████╗██║░░██║░░╚██╔╝░░███████╗██║░╚███║███████╗░░░██║░░░  ██║░╚███║██║░░██║██║░╚═╝░██║███████╗  ██████╔╝██║░╚███║██║██║░░░░░███████╗██║░░██║" + Style.RESET_ALL)
     print(Fore.WHITE + "╚═╝░░╚═╝╚══════╝╚═╝░░╚═╝░░░╚═╝░░░╚══════╝╚═╝░░╚══╝╚══════╝░░░╚═╝░░░  ╚═╝░░╚══╝╚═╝░░╚═╝╚═╝░░░░░╚═╝╚══════╝  ╚═════╝░╚═╝░░╚══╝╚═╝╚═╝░░░░░╚══════╝╚═╝░░╚═╝" + Style.RESET_ALL)
-    print(Fore.YELLOW + Back.WHITE + "Original made by clemouche and modified by tezace :)" + Style.RESET_ALL)
+    print(Fore.YELLOW + "Original made by clemouche and modified by tezace :)" + Style.RESET_ALL)
 
 def check_username(username):
+    global available
     url = f"https://auth.roblox.com/v1/usernames/validate?Username={username}&Birthday={random.randint(1980, 2000)}-{random.randint(1, 10)}-{random.randint(1, 10)}"
     try:
         response = requests.get(url)
@@ -40,15 +41,13 @@ def check_username(username):
 
 def main():
     print_banner()
-    input("Press Enter to continue")
-
 
     with open("usernames.txt", "r") as file:
         usernames = file.read().splitlines()
 
     for username in usernames:
         check_username(username)
-        time.sleep(0.01)
+        time.sleep(0.05)
     
     if available >= 3000:
         print(Fore.WHITE + Back.LIGHTYELLOW_EX + f"Valid username amount: {available} (HEAVENLY!!!)" + Style.RESET_ALL)
@@ -63,7 +62,7 @@ def main():
     elif available >= 25:
         print(Fore.GREEN + f"Valid username amount: {available} (Uncommon)" + Style.RESET_ALL)
     elif available >= 5:
-        print(Fore.BLACK + f"Valid username amount: {available} (Common)" + Style.RESET_ALL)
+        print(Fore.LIGHTBLACK_EX + f"Valid username amount: {available} (Common)" + Style.RESET_ALL)
     else:
         print("No usernames available..")
     

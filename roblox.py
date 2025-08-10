@@ -60,7 +60,7 @@ def main():
 
     for username in usernames:
         check_username(username)
-        time.sleep(0.08)
+        time.sleep(0.05)
     
     if available >= 3000:
         print(Fore.WHITE + Back.LIGHTYELLOW_EX + f"Valid username amount: {available} (HEAVENLY!!!)" + Style.RESET_ALL)

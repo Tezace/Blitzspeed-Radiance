@@ -2,6 +2,7 @@ import requests
 import time
 from colorama import Fore, Back, Style, init
 import random
+import sys
 
 available = 0
 
@@ -18,11 +19,11 @@ def print_banner():
 
 def check_username(username):
     global available
-    url = f"https://auth.roblox.com/v1/usernames/validate?Username={username}&Birthday={random.randint(1980, 2000)}-{random.randint(1, 10)}-{random.randint(1, 10)}"
+    url = f"https://auth.roblox.com/v1/usernames/validate?Username={username}&Birthday={random.randint(1980, 2000)}-{random.randint(1, 10)}-{random.randint(1, 10)}" # random birthday, idk felt like adding it
     try:
         response = requests.get(url)
         response_data = response.json()
-
+ 
         code = response_data.get("code")
         if code == 0:
             print(Fore.GREEN + f"VALID: {username}" + Style.RESET_ALL)
@@ -33,10 +34,22 @@ def check_username(username):
             print(Fore.LIGHTBLACK_EX + f"TAKEN: {username}" + Style.RESET_ALL)
         elif code == 2:
             print(Fore.RED + f"CENSORED: {username}" + Style.RESET_ALL)
+        elif code == 3:
+            print(Fore.RED + f"TOO LONG/SHORT: {username}" + Style.RESET_ALL)
+        elif code == 4:
+            print(Fore.RED + f"STARTING/ENDING WITH AN UNDERSCORE: {username}" + Style.RESET_ALL)
+        elif code == 5:
+            print(Fore.RED + f"CONSECUTIVE UNDERSCORES: {username}" + Style.RESET_ALL)
+        elif code == 7:
+            print(Fore.RED + f"INVALID SYMBOLS: {username}" + Style.RESET_ALL)
         else:
             print(Fore.YELLOW + f"bruh ({code}): {username}" + Style.RESET_ALL)
 
     except requests.exceptions.RequestException as e:
+        if "retries exceeded" in str(e):
+            print(Fore.YELLOW + f"max retries exceeded, trying again.." + Style.RESET_ALL)
+            check_username(username)
+            time.sleep(60)  # wait a minute before retrying
         print(Fore.YELLOW + f"glitch {username}: {e}" + Style.RESET_ALL)
 
 def main():
@@ -47,13 +60,13 @@ def main():
 
     for username in usernames:
         check_username(username)
-        time.sleep(0.05)
+        time.sleep(0.08)
     
     if available >= 3000:
         print(Fore.WHITE + Back.LIGHTYELLOW_EX + f"Valid username amount: {available} (HEAVENLY!!!)" + Style.RESET_ALL)
     elif available >= 1000:
         print(Fore.CYAN + f"Valid username amount: {available} (MYTHICAL!!)" + Style.RESET_ALL)
-    elif available >= 325:
+    elif available >= 500:
         print(Fore.YELLOW + f"Valid username amount: {available} (Legendary!)" + Style.RESET_ALL)
     elif available >= 125:
         print(Fore.MAGENTA + f"Valid username amount: {available} (Epic!)" + Style.RESET_ALL)
@@ -66,9 +79,11 @@ def main():
     else:
         print("No usernames available..")
     
-    time.sleep(1000)
-
+    input("Press Enter to exit...") # to keep the console open yk
     
+
+if __name__ == "__main__":
+    main()
 
 if __name__ == "__main__":
     main()

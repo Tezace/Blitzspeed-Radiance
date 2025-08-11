@@ -1,89 +1,86 @@
 import requests
 import time
-from colorama import Fore, Back, Style, init
 import random
 import sys
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from colorama import Fore, Back, Style, init
+from pathlib import Path
 
-available = 0
+# the configurations
+INPUT_FILE = "usernames.txt"
+OUTPUT_FILE = "valid.txt"
+THREADS = 5           # how many requests should happen at once
+DELAY_BETWEEN = 0.1   # seconds between each request per thread
+MAX_RETRIES = 5
+TIMEOUT = 5           # seconds for HTTP timeout
+BIRTHDAY_YEARS = (1980, 2000)
 
 init()
 
 def print_banner():
-    print(Fore.WHITE + "██╗░░██╗███████╗░█████╗░██╗░░░██╗███████╗███╗░░██╗██╗░░░░░██╗░░░██╗  ███╗░░██╗░█████╗░███╗░░░███╗███████╗  ░██████╗███╗░░██╗██╗██████╗░███████╗██████╗░" + Style.RESET_ALL)
-    print(Fore.WHITE + "██║░░██║██╔════╝██╔══██╗██║░░░██║██╔════╝████╗░██║██║░░░░░╚██╗░██╔╝  ████╗░██║██╔══██╗████╗░████║██╔════╝  ██╔════╝████╗░██║██║██╔══██╗██╔════╝██╔══██╗" + Style.RESET_ALL)
-    print(Fore.WHITE + "███████║█████╗░░███████║╚██╗░██╔╝█████╗░░██╔██╗██║██║░░░░░░╚████╔╝░  ██╔██╗██║███████║██╔████╔██║█████╗░░  ╚█████╗░██╔██╗██║██║██████╔╝█████╗░░██████╔╝" + Style.RESET_ALL)
-    print(Fore.WHITE + "██╔══██║██╔══╝░░██╔══██║░╚████╔╝░██╔══╝░░██║╚████║██║░░░░░░░╚██╔╝░░  ██║╚████║██╔══██║██║╚██╔╝██║██╔══╝░░  ░╚═══██╗██║╚████║██║██╔═══╝░██╔══╝░░██╔══██╗" + Style.RESET_ALL)
-    print(Fore.WHITE + "██║░░██║███████╗██║░░██║░░╚██╔╝░░███████╗██║░╚███║███████╗░░░██║░░░  ██║░╚███║██║░░██║██║░╚═╝░██║███████╗  ██████╔╝██║░╚███║██║██║░░░░░███████╗██║░░██║" + Style.RESET_ALL)
-    print(Fore.WHITE + "╚═╝░░╚═╝╚══════╝╚═╝░░╚═╝░░░╚═╝░░░╚══════╝╚═╝░░╚══╝╚══════╝░░░╚═╝░░░  ╚═╝░░╚══╝╚═╝░░╚═╝╚═╝░░░░░╚═╝╚══════╝  ╚═════╝░╚═╝░░╚══╝╚═╝╚═╝░░░░░╚══════╝╚═╝░░╚═╝" + Style.RESET_ALL)
-    print(Fore.YELLOW + "Original made by clemouche and modified by tezace :)" + Style.RESET_ALL)
+    print(Fore.YELLOW + "[Heavenly Name Sniper v1.2 - Hypersonic Speed]" + Style.RESET_ALL)
 
 def check_username(username):
-    global available
-    url = f"https://auth.roblox.com/v1/usernames/validate?Username={username}&Birthday={random.randint(1980, 2000)}-{random.randint(1, 10)}-{random.randint(1, 10)}" # random birthday, idk felt like adding it
-    try:
-        response = requests.get(url)
-        response_data = response.json()
- 
-        code = response_data.get("code")
-        if code == 0:
-            print(Fore.GREEN + f"VALID: {username}" + Style.RESET_ALL)
-            with open("valid.txt", "a") as valid_file:
-                valid_file.write(username + "\n")
-            available += 1
-        elif code == 1:
-            print(Fore.LIGHTBLACK_EX + f"TAKEN: {username}" + Style.RESET_ALL)
-        elif code == 2:
-            print(Fore.RED + f"CENSORED: {username}" + Style.RESET_ALL)
-        elif code == 3:
-            print(Fore.RED + f"TOO LONG/SHORT: {username}" + Style.RESET_ALL)
-        elif code == 4:
-            print(Fore.RED + f"STARTING/ENDING WITH AN UNDERSCORE: {username}" + Style.RESET_ALL)
-        elif code == 5:
-            print(Fore.RED + f"CONSECUTIVE UNDERSCORES: {username}" + Style.RESET_ALL)
-        elif code == 7:
-            print(Fore.RED + f"INVALID SYMBOLS: {username}" + Style.RESET_ALL)
-        else:
-            print(Fore.YELLOW + f"bruh ({code}): {username}" + Style.RESET_ALL)
-
-    except requests.exceptions.RequestException as e:
-        if "retries exceeded" in str(e):
-            print(Fore.YELLOW + f"max retries exceeded, trying again.." + Style.RESET_ALL)
-            check_username(username)
-            time.sleep(60)  # wait a minute before retrying
-        print(Fore.YELLOW + f"glitch {username}: {e}" + Style.RESET_ALL)
+    """Check if a Roblox username is valid."""
+    url = f"https://auth.roblox.com/v1/usernames/validate"
+    params = {
+        "Username": username,
+        "Birthday": f"{random.randint(*BIRTHDAY_YEARS)}-{random.randint(1, 12)}-{random.randint(1, 28)}"
+    }
+    
+    for attempt in range(1, MAX_RETRIES + 1):
+        try:
+            response = requests.get(url, params=params, timeout=TIMEOUT)
+            data = response.json()
+            code = data.get("code")
+            
+            if code == 0:
+                print(Fore.GREEN + f"VALID: {username}" + Style.RESET_ALL)
+                return username
+            elif code == 1:
+                print(Fore.LIGHTBLACK_EX + f"TAKEN: {username}" + Style.RESET_ALL)
+            elif code == 2:
+                print(Fore.RED + f"CENSORED: {username}" + Style.RESET_ALL)
+            elif code == 3:
+                print(Fore.RED + f"TOO LONG/SHORT: {username}" + Style.RESET_ALL)
+            elif code == 4:
+                print(Fore.RED + f"START/END WITH _: {username}" + Style.RESET_ALL)
+            elif code == 5:
+                print(Fore.RED + f"CONSECUTIVE _: {username}" + Style.RESET_ALL)
+            elif code == 7:
+                print(Fore.RED + f"INVALID SYMBOLS: {username}" + Style.RESET_ALL)
+            else:
+                print(Fore.YELLOW + f"bruh {code}: {username}" + Style.RESET_ALL)
+            return None
+        
+        except requests.exceptions.RequestException as e:
+            wait_time = 2 ** attempt
+            print(Fore.YELLOW + f"glitch ({e}) on {username}, retrying in {wait_time}s..." + Style.RESET_ALL)
+            time.sleep(wait_time)
+    
+    return None
 
 def main():
     print_banner()
 
-    with open("usernames.txt", "r") as file:
-        usernames = file.read().splitlines()
+    usernames = Path(INPUT_FILE).read_text().splitlines()
+    valid_names = []
 
-    for username in usernames:
-        check_username(username)
-        time.sleep(0.05)
-    
-    if available >= 3000:
-        print(Fore.WHITE + Back.LIGHTYELLOW_EX + f"Valid username amount: {available} (HEAVENLY!!!)" + Style.RESET_ALL)
-    elif available >= 1000:
-        print(Fore.CYAN + f"Valid username amount: {available} (MYTHICAL!!)" + Style.RESET_ALL)
-    elif available >= 500:
-        print(Fore.YELLOW + f"Valid username amount: {available} (Legendary!)" + Style.RESET_ALL)
-    elif available >= 125:
-        print(Fore.MAGENTA + f"Valid username amount: {available} (Epic!)" + Style.RESET_ALL)
-    elif available >= 25:
-        print(Fore.BLUE + f"Valid username amount: {available} (Rare!)" + Style.RESET_ALL)
-    elif available >= 5:
-        print(Fore.GREEN + f"Valid username amount: {available} (Uncommon)" + Style.RESET_ALL)
-    elif available >= 1:
-        print(Fore.LIGHTBLACK_EX + f"Valid username amount: {available} (Common)" + Style.RESET_ALL)
+    with ThreadPoolExecutor(max_workers=THREADS) as executor:
+        futures = {executor.submit(check_username, name): name for name in usernames}
+        
+        for future in as_completed(futures):
+            result = future.result()
+            if result:
+                valid_names.append(result)
+            time.sleep(DELAY_BETWEEN)
+
+    if valid_names:
+        Path(OUTPUT_FILE).write_text("\n".join(valid_names))
+        print(Fore.CYAN + f"\nSaved {len(valid_names)} valid usernames to {OUTPUT_FILE}" + Style.RESET_ALL)
     else:
-        print("No usernames available..")
-    
-    input("Press Enter to exit...") # to keep the console open yk
-    
+        print(Fore.RED + "\nNo valid usernames found." + Style.RESET_ALL)
 
 if __name__ == "__main__":
     main()
 
-if __name__ == "__main__":
-    main()

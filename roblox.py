@@ -1,24 +1,34 @@
+# Heavenly Name Sniper
 import requests
 import time
 import random
-import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from colorama import Fore, Back, Style, init
 from pathlib import Path
+from tqdm import tqdm
+import logging
 
 # the configurations
 INPUT_FILE = "usernames.txt"
 OUTPUT_FILE = "valid.txt"
-THREADS = 5           # how many requests should happen at once
-DELAY_BETWEEN = 0.1   # seconds between each request per thread
-MAX_RETRIES = 5
-TIMEOUT = 5           # seconds for HTTP timeout
+THREADS = 5           # Parallel requests (depending on your CPU, PLEASE edit this i beg you)
+DELAY_BETWEEN = 0.1   # Seconds between each request per thread
+MAX_RETRIES = 6
+TIMEOUT = 5           # Seconds for HTTP timeout
 BIRTHDAY_YEARS = (1980, 2000)
 
 init()
 
+# logging setup
+logging.basicConfig(
+    filename="results.log",
+    level=logging.INFO,
+    format="%(asctime)s - %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S"
+)
+
 def print_banner():
-    print(Fore.YELLOW + "[Heavenly Name Sniper v1.2 - Hypersonic Speed]" + Style.RESET_ALL)
+    print(Fore.YELLOW + "[Heavenly Name Sniper v1.3.0 - Progression (progress bar added)]" + Style.RESET_ALL)
 
 def check_username(username):
     """Check if a Roblox username is valid."""
@@ -35,30 +45,31 @@ def check_username(username):
             code = data.get("code")
             
             if code == 0:
-                print(Fore.GREEN + f"VALID: {username}" + Style.RESET_ALL)
+                logging.info(f"VALID: {username}")
                 return username
             elif code == 1:
-                print(Fore.LIGHTBLACK_EX + f"TAKEN: {username}" + Style.RESET_ALL)
+                logging.info(f"TAKEN: {username}")
             elif code == 2:
-                print(Fore.RED + f"CENSORED: {username}" + Style.RESET_ALL)
+                logging.info(f"CENSORED: {username}")
             elif code == 3:
-                print(Fore.RED + f"TOO LONG/SHORT: {username}" + Style.RESET_ALL)
+                logging.info(f"TOO LONG/SHORT: {username}")
             elif code == 4:
-                print(Fore.RED + f"START/END WITH _: {username}" + Style.RESET_ALL)
+                logging.info(f"START/END WITH _: {username}")
             elif code == 5:
-                print(Fore.RED + f"CONSECUTIVE _: {username}" + Style.RESET_ALL)
+                logging.info(f"CONSECUTIVE _: {username}")
             elif code == 7:
-                print(Fore.RED + f"INVALID SYMBOLS: {username}" + Style.RESET_ALL)
+                logging.info(f"INVALID SYMBOLS: {username}")
             else:
-                print(Fore.YELLOW + f"bruh {code}: {username}" + Style.RESET_ALL)
+                logging.info(f"bruh {code}: {username}")
             return None
         
         except requests.exceptions.RequestException as e:
-            wait_time = 2 ** attempt
-            print(Fore.YELLOW + f"glitch ({e}) on {username}, retrying in {wait_time}s..." + Style.RESET_ALL)
+            wait_time = 4 ** attempt
+            logging.warning(f"glitch ({e}) on {username}, retrying in {wait_time}s...")
             time.sleep(wait_time)
     
     return None
+
 
 def main():
     print_banner()
@@ -68,12 +79,14 @@ def main():
 
     with ThreadPoolExecutor(max_workers=THREADS) as executor:
         futures = {executor.submit(check_username, name): name for name in usernames}
-        
-        for future in as_completed(futures):
-            result = future.result()
-            if result:
-                valid_names.append(result)
-            time.sleep(DELAY_BETWEEN)
+
+        with tqdm(total=len(usernames), desc="Checking usernames", unit=" checks", ncols=150) as pbar:
+            for future in as_completed(futures):
+                result = future.result()
+                if result:
+                    valid_names.append(result)
+                time.sleep(DELAY_BETWEEN)
+                pbar.update(1)
 
     if valid_names:
         Path(OUTPUT_FILE).write_text("\n".join(valid_names))

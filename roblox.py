@@ -3,12 +3,10 @@ import asyncio
 import aiohttp
 import random
 import logging
-import argparse
 from colorama import Fore, Style, init
 from pathlib import Path
 from tqdm.asyncio import tqdm_asyncio
 from asyncio import Semaphore
-import requests
 #roblox username validation status codes
 STATUS_MESSAGES = {
     0: "VALID",

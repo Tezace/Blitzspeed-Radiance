@@ -21,6 +21,10 @@ STATUS_MESSAGES = {
 
 BIRTHDAY_YEARS = (1980, 2000)
 MAX_WAIT = 60  #max retry backoff in seconds
+USER_AGENTS = [
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/127 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Firefox/117.0",
+]
 
 #colorama init
 init(autoreset=True)
@@ -38,7 +42,7 @@ def setup_logging():
 
 
 def print_banner():
-    print(Fore.YELLOW + "[Heavenly Name Sniper v1.4.0 - Lightning Speed]" + Style.RESET_ALL)
+    print(Fore.YELLOW + "[Heavenly Name Sniper v1.4.1 - Better Progress Bar]" + Style.RESET_ALL)
 
 
 async def check_username(session, username, output_file, retries, timeout, delay, sem: Semaphore):
@@ -51,9 +55,7 @@ async def check_username(session, username, output_file, retries, timeout, delay
     url = f"https://auth.roblox.com/v1/usernames/validate?Username={username}&Birthday={birthday}"
 
     headers = {
-        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
-                      "AppleWebKit/537.36 (KHTML, like Gecko) "
-                      "Chrome/127.0.0.1 Safari/537.36",
+        "User-Agent": random.choice(USER_AGENTS),
         "Accept": "application/json"
     }
 
@@ -64,7 +66,7 @@ async def check_username(session, username, output_file, retries, timeout, delay
                     #rahh i hate rate limits so i put this code
                     if resp.status == 429:
                         retry_after = resp.headers.get("Retry-After")
-                        wait_time = float(retry_after)+0.2 if retry_after else min(4 ** attempt, MAX_WAIT)
+                        wait_time = float(retry_after) if retry_after else min(4 ** attempt, MAX_WAIT)
                         logging.warning(f"Rate limit hit for {username}, waiting {wait_time:.1f}s...")
                         await asyncio.sleep(wait_time)
                         continue  #retry the same username yk
@@ -127,7 +129,7 @@ async def main(input_file, output_file, threads, delay, retries, timeout):
             check_username(session, name.strip(), output_file, retries, timeout, delay, sem)
             for name in usernames if name.strip()
         ]
-        await tqdm_asyncio.gather(*tasks, desc="Checking usernames", unit="check", ncols=100)
+        await tqdm_asyncio.gather(*tasks, desc="Checking usernames", unit="check", ncols=150, bar_format="{desc}: {percentage:6.3f}% |{bar}| {n_fmt}/{total_fmt} [{elapsed} < {remaining}, {rate_fmt}]")
 
 
 if __name__ == "__main__":

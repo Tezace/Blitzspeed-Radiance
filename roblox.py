@@ -1,4 +1,4 @@
-#Heavenly Name Sniper - average of 16 checks per second
+# Blitzspeed Radiance - average of 16 checks per second
 import asyncio
 import aiohttp
 import random
@@ -7,7 +7,8 @@ from colorama import Fore, Style, init
 from pathlib import Path
 from tqdm.asyncio import tqdm_asyncio
 from asyncio import Semaphore
-#roblox username validation status codes
+
+# roblox username validation status codes that i know of
 STATUS_MESSAGES = {
     0: "VALID",
     1: "TAKEN",
@@ -20,13 +21,13 @@ STATUS_MESSAGES = {
 }
 
 BIRTHDAY_YEARS = (1980, 2000)
-MAX_WAIT = 60  #max retry backoff in seconds
+MAX_WAIT = 60
 USER_AGENTS = [
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) Chrome/127 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) Firefox/117.0",
 ]
 
-#colorama init
+# colorama init
 init(autoreset=True)
 
 def setup_logging():
@@ -36,17 +37,11 @@ def setup_logging():
         format="%(asctime)s - %(message)s",
         datefmt="%Y-%m-%d %H:%M:%S"
     )
-    console = logging.StreamHandler()
-    console.setLevel(logging.INFO)
-    console.setFormatter(logging.Formatter("%(message)s"))
-
 
 def print_banner():
-    print(Fore.YELLOW + "[Heavenly Name Sniper v1.4.1 - Better Progress Bar]" + Style.RESET_ALL)
+    print(Fore.YELLOW + "[Blitzspeed Radiance v1.5.0 - Resume Support]" + Style.RESET_ALL)
 
-
-async def check_username(session, username, output_file, retries, timeout, delay, sem: Semaphore):
-    #random birthday because i felt like it
+async def check_username(session, username, output_file, processed_file, retries, timeout, delay, sem: Semaphore, lock: asyncio.Lock):
     year = random.randint(*BIRTHDAY_YEARS)
     month = random.randint(1, 12)
     day = random.randint(1, 28)
@@ -63,16 +58,14 @@ async def check_username(session, username, output_file, retries, timeout, delay
         for attempt in range(1, retries + 1):
             try:
                 async with session.get(url, timeout=timeout, headers=headers) as resp:
-                    #rahh i hate rate limits so i put this code
-                    if resp.status == 429:
+                    if resp.status == 429: # i hate rate limits so i put this code
                         retry_after = resp.headers.get("Retry-After")
                         wait_time = float(retry_after) if retry_after else min(4 ** attempt, MAX_WAIT)
                         logging.warning(f"Rate limit hit for {username}, waiting {wait_time:.1f}s...")
                         await asyncio.sleep(wait_time)
-                        continue  #retry the same username yk
+                        continue
 
-                    #just incase either me or roblox screwed up massively
-                    if resp.status != 200:
+                    if resp.status != 200: # just incase either me or roblox screwed up massively
                         raw_text = await resp.text()
                         logging.warning(
                             f"HTTP {resp.status} for {username} (attempt {attempt})\n"
@@ -92,16 +85,16 @@ async def check_username(session, username, output_file, retries, timeout, delay
 
                     code = data.get("code", -1)
                     status = STATUS_MESSAGES.get(code, f"Unknown code {code}")
-
                     logging.info(f"{status}: {username}")
 
-                    if code == 0:  #valid username!!!!!
-                        async with asyncio.Lock():
-                            Path(output_file).write_text(
-                                Path(output_file).read_text(encoding="utf-8") + username + "\n",
-                                encoding="utf-8"
-                            )
-                        return True
+                    async with lock:
+                        with open(processed_file, "a", encoding="utf-8") as pf:
+                            pf.write(username + "\n")
+
+                        if code == 0:  # valid username
+                            with open(output_file, "a", encoding="utf-8") as vf:
+                                vf.write(username + "\n")
+                            return True
 
                     return False
 
@@ -112,28 +105,51 @@ async def check_username(session, username, output_file, retries, timeout, delay
 
         return False
 
-
-
-
 async def main(input_file, output_file, threads, delay, retries, timeout):
     print_banner()
     setup_logging()
 
+    processed_file = "processed.txt"
+
     usernames = Path(input_file).read_text(encoding="utf-8").splitlines()
-    Path(output_file).write_text("", encoding="utf-8")  #habibi its to clear ze old results
+
+    # load processed usernames (valid + invalid) to skip them
+    processed = set()
+    if Path(processed_file).exists():
+        processed = set(Path(processed_file).read_text(encoding="utf-8").splitlines())
+
+    # filter out processed names
+    usernames = [u.strip() for u in usernames if u.strip() and u not in processed]
+
+    if not usernames:
+        print(Fore.GREEN + "[+] All usernames already processed!" + Style.RESET_ALL)
+        return
 
     sem = Semaphore(threads)
+    lock = asyncio.Lock()
 
     async with aiohttp.ClientSession() as session:
         tasks = [
-            check_username(session, name.strip(), output_file, retries, timeout, delay, sem)
-            for name in usernames if name.strip()
+            check_username(session, name, output_file, processed_file, retries, timeout, delay, sem, lock)
+            for name in usernames
         ]
-        await tqdm_asyncio.gather(*tasks, desc="Checking usernames", unit="check", ncols=150, bar_format="{desc}: {percentage:6.3f}% |{bar}| {n_fmt}/{total_fmt} [{elapsed} < {remaining}, {rate_fmt}]")
-
+        await tqdm_asyncio.gather(
+            *tasks,
+            desc="Checking usernames",
+            unit="check",
+            ncols=150,
+            bar_format="{desc}: {percentage:6.3f}% | {bar} | {n_fmt}/{total_fmt} [{elapsed} < {remaining}, {rate_fmt}]"
+        )
 
 if __name__ == "__main__":
     try:
-        asyncio.run(main("usernames.txt", "valid.txt", 5, 0.0, 6, 5)) #input file with usernames, output file to save usernames, threads (max concurrent requests, depending on your CPU PLEASE change this i beg you), delay (between requests), max retries per username, HTTP timeout in seconds
+        asyncio.run(main(
+            "usernames.txt",   # input file with usernames
+            "valid.txt",       # output file for valid usernames
+            5,                 # threads (max concurrent requests, depending on your CPU PLEASE edit this i beg you)
+            0.0,               # delay between requests
+            6,                 # max retries per username
+            5                  # HTTP timeout in seconds
+        ))
     except KeyboardInterrupt:
         print(Fore.RED + "\n[!] Stopped by user." + Style.RESET_ALL)

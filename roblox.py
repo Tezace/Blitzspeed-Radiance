@@ -1,4 +1,4 @@
-#Heavenly Name Sniper
+#Heavenly Name Sniper - average of 16 checks per second
 import asyncio
 import aiohttp
 import random

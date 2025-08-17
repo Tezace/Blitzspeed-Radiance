@@ -5,7 +5,7 @@ import random
 import logging
 import argparse
 import csv
-from datetime import datetime, UTC
+from datetime import datetime
 from colorama import Fore, Style, init
 from pathlib import Path
 from tqdm.asyncio import tqdm_asyncio
@@ -49,7 +49,7 @@ async def send_webhook(webhook_url, username):
             "title": "Username Available!",
             "description": f"`{username}` is free to claim!",
             "color": 65280,
-            "timestamp": datetime.now(UTC).isoformat()
+            "timestamp": datetime.now().isoformat()
         }]
     }
     async with aiohttp.ClientSession() as session:
@@ -107,7 +107,7 @@ async def check_username(session, username, args, sem: Semaphore, lock: asyncio.
                     status = STATUS_MESSAGES.get(code, f"Unknown code {code}")
                     logging.info(f"{status}: {username}")
 
-                    ts = datetime.now(UTC).isoformat() # gets the time now (ts pmo icl sybau!!)
+                    ts = datetime.now().isoformat() # gets the time now (ts pmo icl sybau!!)
                     async with lock:
                         with open(args.csv, "a", newline="", encoding="utf-8") as cf:
                             writer = csv.writer(cf)
@@ -159,7 +159,7 @@ async def main(args):
     lock = asyncio.Lock()
     stats = {"valid": 0, "taken": 0, "invalid": 0, "errors": 0, "delay": args.delay} # the statistics
 
-    start_time = datetime.now(UTC)
+    start_time = datetime.now()
 
     async with aiohttp.ClientSession() as session:
         tasks = [
@@ -168,7 +168,7 @@ async def main(args):
         ]
         await tqdm_asyncio.gather(*tasks, desc="Checking usernames", unit="check", ncols=150, bar_format="{desc}: {percentage:6.3f}% [{bar}] {n_fmt}/{total_fmt} [{elapsed} < {remaining}, {rate_fmt}]") # the progress bar yk
 
-    elapsed = (datetime.now(UTC) - start_time).total_seconds()
+    elapsed = (datetime.now() - start_time).total_seconds()
     total = sum(stats[k] for k in ("valid", "taken", "invalid", "errors"))
     speed = total / elapsed if elapsed > 0 else 0
 

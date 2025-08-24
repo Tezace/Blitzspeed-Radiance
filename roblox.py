@@ -1,9 +1,7 @@
-# a name sniper? *puts on hat* BLITZSPEED RADIANCE THE NAME SNIPER?!
 import asyncio
 import aiohttp
 import random
 import logging
-import argparse
 import csv
 from datetime import datetime
 from colorama import Fore, Style, init
@@ -18,7 +16,7 @@ STATUS_MESSAGES = {
     2: "CENSORED",
     3: "TOO LONG/SHORT",
     4: "START/END WITH _",
-    5: "CONSECUTIVE _",
+    5: "MULTIPLE _",
     7: "INVALID SYMBOLS",
     10: "MIGHT CONTAIN PRIVATE INFORMATION" # all known codes so far
 }
@@ -32,6 +30,8 @@ USER_AGENTS = [
 
 init(autoreset=True)
 
+
+
 def setup_logging():
     logging.basicConfig(
         filename="results.log",
@@ -41,13 +41,21 @@ def setup_logging():
     )
 
 def print_banner():
-    print(Fore.YELLOW + "[Blitzspeed Radiance v2.0.0 - Complete Rewrite (Adaptive Speed + Webhooks + CLI Arguments + Run Summary)]" + Style.RESET_ALL)
+    print(Fore.YELLOW + "[Blitzspeed Radiance v2.1.0 - Input Arguments]" + Style.RESET_ALL)
 
 async def send_webhook(webhook_url, username):
-    payload = { # sends a webhook when theres a valid username
+    messages = [
+        f"`{username}` is free to claim!",
+        f"`{username}` is available! Will you be the first one?",
+        f"Lucky find, `{username}` just dropped!",
+        f"Someone grab `{username}` before it’s gone!",
+        f"The username `{username}` is up for grabs!"
+    ]
+
+    payload = {
         "embeds": [{
             "title": "Username Available!",
-            "description": f"`{username}` is free to claim!",
+            "description": random.choice(messages),
             "color": 65280,
             "timestamp": datetime.now().isoformat()
         }]
@@ -121,6 +129,8 @@ async def check_username(session, username, args, sem: Semaphore, lock: asyncio.
                                 await send_webhook(args.webhook, username)
                         elif code == 1:
                             stats["taken"] += 1
+                        elif code == 2:
+                            stats["censored"] += 1
                         else:
                             stats["invalid"] += 1
 
@@ -157,7 +167,7 @@ async def main(args):
 
     sem = Semaphore(args.threads)
     lock = asyncio.Lock()
-    stats = {"valid": 0, "taken": 0, "invalid": 0, "errors": 0, "delay": args.delay} # the statistics
+    stats = {"valid": 0, "taken": 0, "censored": 0, "invalid": 0, "errors": 0, "delay": args.delay} # the statistics
 
     start_time = datetime.now()
 
@@ -175,22 +185,40 @@ async def main(args):
     print(Fore.CYAN + "\n  - Run Summary -  " + Style.RESET_ALL)
     print(Fore.GREEN + f"[:)] Valid: {stats['valid']}" + Style.RESET_ALL)
     print(Fore.RED + f"[:(] Taken: {stats['taken']}" + Style.RESET_ALL)
+    print(Fore.LIGHTBLACK_EX + f"[/>@%;^] Censored: {stats['censored']}" + Style.RESET_ALL)
     print(Fore.YELLOW + f"[>:(] Invalid: {stats['invalid']}" + Style.RESET_ALL)
     print(Fore.LIGHTRED_EX + f"[X_X] Errors: {stats['errors']}" + Style.RESET_ALL)
     print(Fore.LIGHTWHITE_EX + f"Total checked: {total}" + Style.RESET_ALL)
     print(Fore.CYAN + f"[>>] Avg speed: {speed:.2f} checks/sec" + Style.RESET_ALL)
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="Blitzspeed Radiance v2.0.0 - Roblox Name Sniper") # the cli arguments, almost everything defaults to something so dw yall
-    parser.add_argument("--input", default="usernames.txt", help="Input file with usernames")
-    parser.add_argument("--output", default="valid.txt", help="File to save valid usernames")
-    parser.add_argument("--csv", default="results.csv", help="CSV log file")
-    parser.add_argument("--threads", type=int, default=5, help="Max concurrent requests")
-    parser.add_argument("--delay", type=float, default=0.0, help="Base delay between requests")
-    parser.add_argument("--retries", type=int, default=6, help="Max retries per username")
-    parser.add_argument("--timeout", type=int, default=5, help="HTTP timeout in seconds")
-    parser.add_argument("--webhook", help="Discord webhook URL for valid username alerts")
-    args = parser.parse_args()
+    print_banner()
+
+    # Ask for settings interactively
+    def ask(prompt, default=None, cast=str):
+        text = input(f"{prompt} [{default}]: ").strip()
+        if not text:
+            return default
+        try:
+            return cast(text)
+        except Exception:
+            print(f"Invalid value, using default ({default})")
+            return default
+
+    class Args:
+        pass
+
+    args = Args()
+    args.input = ask("Enter the text file name that usernames should be saved to", "usernames.txt", str)
+    args.output = ask("Enter the file to save valid usernames", "valid.txt", str)
+    args.csv = ask("Enter the CSV log file", "results.csv", str)
+    args.threads = ask("How many threads do you want? (default: 5)", 5, int)
+    args.delay = ask("Base delay between requests, putting 0 won't make it instant since GET requests take some time okay :(", 0.0, float)
+    args.retries = ask("How many max retries per username incase something goes wrong?", 6, int)
+    args.timeout = ask("Enter HTTP timeout in seconds", 5, int)
+    args.webhook = ask("Enter the Discord webhook URL (leave blank for none)", "", str)
+    if not args.webhook.strip():
+        args.webhook = None
 
     try:
         asyncio.run(main(args))
